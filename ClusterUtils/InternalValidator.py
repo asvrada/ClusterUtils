@@ -1,12 +1,101 @@
 import pandas as pd
+import numpy as np
 import time
 from ClusterUtils.ClusterPlotter import _plot_cvnn_
 from ClusterUtils.ClusterPlotter import _plot_silhouette_
 
 
-def tabulate_silhouette(datasets, cluster_nums):
+def silhouette(dataset, cluster_num):
+    """
+    :param dataset: DataFrame contains clustering results, n rows
+    :param cluster_num:
+    :return:
+    """
 
-    # Implement.
+    def d(x, y):
+        """
+        :param x: data sample
+        :param y: data sample
+        :return: distance between x and y
+        """
+        return np.linalg.norm(x - y)
+
+    def a(cluster, i):
+        """
+        let a(i) be the average distance between i and all other data within the same cluster
+        :param cluster: index of cluster the data point belongs to
+        :param i: the data point
+        :type i: np.array
+        :return: float
+        """
+        return sum(d(i, data) for data in dataset_converted[cluster]) / (len(dataset_converted[cluster]) - 1)
+
+    def b(cluster, i):
+        """
+        Let b(i) be the smallest average distance of i to all points in any other cluster, of which i is not a member
+        :param cluster: index of cluster
+        :type cluster: int
+        :param i: the data point
+        :type i: np.array
+        :return: float
+        """
+        ave_dist_clusters = []
+        for i_cluster in range(cluster_num):
+            if i_cluster == cluster:
+                continue
+            # distance to all data points in another cluster
+            dist = sum(d(i, data) for data in dataset_converted[i_cluster]) / len(dataset_converted[i_cluster])
+            ave_dist_clusters.append(dist)
+
+        return min(ave_dist_clusters)
+
+    def s(cluster, i):
+        """
+        silhouette value for single data point i
+        :param cluster: index of cluster
+        :type cluster: int
+        :param i: data point
+        :type i: np.array
+        :return:
+        """
+        ret_a = a(cluster, i)
+        ret_b = b(cluster, i)
+
+        if abs(ret_a - ret_b) <= 1e-10:
+            return 0
+        if ret_a < ret_b:
+            return 1 - ret_a / ret_b
+        return ret_b / ret_a - 1
+
+    # convert dataset into better format
+    # [[x,y,cluster]] -> [[(x,y),(x,y)], [(x,y)]]
+    dataset_converted = dict()
+
+    for x, y, cluster in dataset.values:
+        cluster = int(cluster)
+        if cluster == -1:
+            continue
+        if cluster not in dataset_converted:
+            dataset_converted[cluster] = []
+
+        dataset_converted[cluster].append(np.array([x, y]))
+
+    tmp_sum = 0
+    tmp_n = 0
+    for i_cluster in range(cluster_num):
+        tmp_sum += sum(s(i_cluster, i) for i in dataset_converted[i_cluster])
+        tmp_n += len(dataset_converted[i_cluster])
+
+    # the average i over all data of the entire dataset
+    return tmp_sum / tmp_n
+
+
+def tabulate_silhouette(datasets, cluster_nums):
+    """
+    https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/metrics/cluster/unsupervised.py#L22
+    """
+
+    # todo: Implement.
 
     # Inputs:
     # datasets: Your provided list of clustering results.
@@ -16,20 +105,23 @@ def tabulate_silhouette(datasets, cluster_nums):
     # cluster_nums = [2, 3, 4]
 
     # Return a pandas DataFrame corresponding to the results.
+    # x = num of cluster
+    # y = silhouette index of that number of cluster
+    y = [silhouette(dataset, cluster_num) for dataset, cluster_num in zip(datasets, cluster_nums)]
 
-    return None
+    return pd.DataFrame({"CLUSTERS": cluster_nums, "SILHOUETTE_IDX": y})
+
 
 def tabulate_cvnn(datasets, cluster_nums, k_vals):
-
     # Implement.
 
     # Inputs:
-    # datasets: Your provided list of clustering results.
+    # datasets: DataFrames Your provided list of clustering results.
     # cluster_nums: A list of integers corresponding to the number of clusters
     # in each of the datasets, e.g.,
     # datasets = [np.darray, np.darray, np.darray]
     # cluster_nums = [2, 3, 4]
-    
+
     # Return a pandas DataFrame corresponding to the results.
 
     return None
