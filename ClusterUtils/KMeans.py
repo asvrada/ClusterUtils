@@ -13,11 +13,59 @@ def init_random(data, n_clusters):
 
 
 def init_kmeanpp(data, n_clusters):
-    pass
+    # 1st random pick one as centroid to begin with
+    centroids = list()
+    centroids.append(data[random.randint(0, len(data) - 1)])
+
+    # 2nd compute the min distance between every data point and the centroids
+    while len(centroids) < n_clusters:
+        distances = list(min([np.linalg.norm(x - c) ** 2 for c in centroids]) for x in data)
+
+        sum_dist = sum(distances)
+        prob = map(lambda d: d / sum_dist, distances)
+
+        # pick randomly with range
+        # range [0, 1)
+        ran = random.random()
+        sum_prob = 0
+        i = 0
+        for num in prob:
+            sum_prob += num
+            if sum_prob > ran:
+                # found the centroid
+                centroids.append(data[i])
+                break
+            i += 1
+    return centroids
 
 
 def init_global(data, n_clusters):
-    pass
+    def naive_kmeans(X, inner_centroids, max_iter=300):
+        best_inertia = -1
+        for _ in range(max_iter):
+            assignment = np.array([np.argmin([np.linalg.norm(centroid - row) for centroid in inner_centroids]) for row in X])
+            inner_centroids = [np.average(X[np.where(assignment == cluster)[0]], axis=0) for cluster in range(len(inner_centroids))]
+            sse = objective_function(X, assignment, inner_centroids)
+            # when obj func diff <= LIMIT, break
+            if abs(sse - best_inertia) <= THRESHOLD:
+                # that's it
+                return inner_centroids
+
+            # not good enough, go on iteration
+            best_inertia = sse
+
+    centroids = []
+    for num in range(1, n_clusters + 1):
+        if num == 1:
+            centroids.append(data[random.randint(0, len(data) - 1)])
+            continue
+        # for n_clusters > 1
+        # add a random point to previous centroids
+        random_point = data[random.randint(0, len(data) - 1)]
+        centroids.append(random_point)
+        centroids = naive_kmeans(data, centroids)
+
+    return centroids
 
 
 def objective_function(X, assignment, centroids):
@@ -54,28 +102,34 @@ def cluster_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbo
 
     best_centroids, best_assignment, best_inertia = None, None, None
 
+    if verbose:
+        print(">>> Starting Lloyds k-means with {} init, {} clusters".format(init, n_clusters))
+
     # for each iteration of this algorithm
     for _run in range(n_init):
         # init centroids
         centroids = init_methods[init](X, n_clusters)
         assignment = None
-        inertia = 0
+        inertia = -1
         for _iter in range(max_iter):
             assignment = np.array([np.argmin([np.linalg.norm(centroid - row) for centroid in centroids]) for row in X])
             centroids = [np.average(X[np.where(assignment == cluster)[0]], axis=0) for cluster in range(n_clusters)]
 
-            # when obj func diff <= LIMIT, break
             sse = objective_function(X, assignment, centroids)
+            # when obj func diff <= LIMIT, break
             if abs(sse - inertia) <= THRESHOLD:
                 if best_inertia is not None and sse >= best_inertia:
-                    # skip this run
+                    # we are doing worse, just skip this run
+                    if verbose:
+                        print(">>> Discard iteration {} at run {}, with sse {:.2f}".format(_iter, _run, sse))
                     break
                 # that's it
                 best_centroids = centroids
                 best_assignment = assignment
                 best_inertia = sse
 
-                print("Stop K-mean after iteration {} at run {}".format(_iter, _run))
+                if verbose:
+                    print(">>> Accept K-mean after iteration {} at run {}, with sse: {:.2f}".format(_iter, _run, sse))
                 break
 
             # not good enough, go no iteration
