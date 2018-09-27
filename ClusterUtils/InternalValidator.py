@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import math
 import time
 from ClusterUtils.ClusterPlotter import _plot_cvnn_
 from ClusterUtils.ClusterPlotter import _plot_silhouette_
@@ -28,7 +29,11 @@ def silhouette(dataset, cluster_num):
         :type i: np.array
         :return: float
         """
-        return sum(d(i, data) for data in dataset_converted[cluster]) / (len(dataset_converted[cluster]) - 1)
+        divider = len(dataset_converted[cluster]) - 1
+        if divider == 0:
+            # there is only 1 element in this cluster
+            return 0
+        return sum(d(i, data) for data in dataset_converted[cluster]) / divider
 
     def b(cluster, i):
         """
@@ -59,26 +64,34 @@ def silhouette(dataset, cluster_num):
         :return:
         """
         ret_a = a(cluster, i)
+        if math.isnan(ret_a):
+            print("???")
         ret_b = b(cluster, i)
 
         if abs(ret_a - ret_b) <= 1e-10:
             return 0
         if ret_a < ret_b:
-            return 1 - ret_a / ret_b
-        return ret_b / ret_a - 1
+            ret = 1 - ret_a / ret_b
+            if math.isnan(ret):
+                pass
+            return ret
+        ret = ret_b / ret_a - 1
+        if math.isnan(ret):
+            pass
+        return ret
 
     # convert dataset into better format
     # [[x,y,cluster]] -> [[(x,y),(x,y)], [(x,y)]]
     dataset_converted = dict()
 
-    for x, y, cluster in dataset.values:
-        cluster = int(cluster)
+    for row in dataset.values:
+        cluster = int(row[-1])
         if cluster == -1:
             continue
+        row = row[:-1]
         if cluster not in dataset_converted:
             dataset_converted[cluster] = []
-
-        dataset_converted[cluster].append(np.array([x, y]))
+        dataset_converted[cluster].append(np.array(row))
 
     tmp_sum = 0
     tmp_n = 0
@@ -94,8 +107,6 @@ def tabulate_silhouette(datasets, cluster_nums):
     """
     https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/metrics/cluster/unsupervised.py#L22
     """
-
-    # todo: Implement.
 
     # Inputs:
     # datasets: Your provided list of clustering results.

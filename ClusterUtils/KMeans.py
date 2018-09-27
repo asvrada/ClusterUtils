@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
 import random
 import time
@@ -6,6 +7,13 @@ from ClusterUtils.SuperCluster import SuperCluster
 from ClusterUtils.ClusterPlotter import _plot_kmeans_
 
 THRESHOLD = 1e-9
+
+
+def plot_centroids(centroids):
+    return
+    plt.scatter(*zip(*centroids))
+    plt.axis([-6, 6, -6, 6])
+    plt.show()
 
 
 def init_random(data, n_clusters):
@@ -93,7 +101,7 @@ def objective_function(X, assignment, centroids):
     return sse_sum
 
 
-def cluster_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbose=False):
+def kmeans_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbose=False):
     init_methods = {
         "random": init_random,
         "k-mean++": init_kmeanpp,
@@ -103,13 +111,16 @@ def cluster_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbo
     best_centroids, best_assignment, best_inertia = None, None, None
 
     if verbose:
-        print(">>> Starting Lloyds k-means with {} init, {} clusters".format(init, n_clusters))
+        print("\n>>> Starting Lloyds k-means with {} init, {} clusters".format(init, n_clusters))
 
     # for each iteration of this algorithm
     for _run in range(n_init):
         # init centroids
         centroids = init_methods[init](X, n_clusters)
-        assignment = None
+        if verbose:
+            plot_centroids(centroids)
+            pass
+
         inertia = -1
         for _iter in range(max_iter):
             assignment = np.array([np.argmin([np.linalg.norm(centroid - row) for centroid in centroids]) for row in X])
@@ -138,14 +149,32 @@ def cluster_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbo
     return best_centroids, best_assignment, best_inertia
 
 
-def cluster_hartigans(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbose=False):
-    return 0, 0, 0
+def kmeans_hartigans(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbose=False):
+    init_methods = {
+        "random": init_random,
+        "k-mean++": init_kmeanpp,
+        "global": init_global
+    }
+
+    best_centroids, best_assignment, best_inertia = None, None, None
+
+    if verbose:
+        print(">>> Starting Hartigan's k-means with {} init, {} clusters".format(init, n_clusters))
+
+    # todo: hartigan's k-means
+    for _run in range(n_init):
+        centroids = init_methods[init](X, n_clusters)
+        inertia = -1
+        for _iter in range(max_iter):
+            # todo
+            pass
+    return best_centroids, best_assignment, best_inertia
 
 
 def k_means(X, n_clusters=3, init='random', algorithm='lloyds', n_init=1, max_iter=300, verbose=False):
     cluster_algorithm = {
-        "lloyds": cluster_lloyds,
-        "hartigans": cluster_hartigans
+        "lloyds": kmeans_lloyds,
+        "hartigans": kmeans_hartigans
     }
 
     # Implement.
