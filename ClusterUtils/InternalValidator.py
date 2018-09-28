@@ -15,6 +15,7 @@ def silhouette(dataset, cluster_num):
 
     def d(x, y):
         """
+        Distance between x and y
         :param x: data sample
         :param y: data sample
         :return: distance between x and y
@@ -49,6 +50,8 @@ def silhouette(dataset, cluster_num):
             if i_cluster == cluster:
                 continue
             # distance to all data points in another cluster
+            if len(dataset_converted[i_cluster]) == 0:
+                continue
             dist = sum(d(i, data) for data in dataset_converted[i_cluster]) / len(dataset_converted[i_cluster])
             ave_dist_clusters.append(dist)
 
@@ -64,8 +67,6 @@ def silhouette(dataset, cluster_num):
         :return:
         """
         ret_a = a(cluster, i)
-        if math.isnan(ret_a):
-            print("???")
         ret_b = b(cluster, i)
 
         if abs(ret_a - ret_b) <= 1e-10:
@@ -83,14 +84,12 @@ def silhouette(dataset, cluster_num):
     # convert dataset into better format
     # [[x,y,cluster]] -> [[(x,y),(x,y)], [(x,y)]]
     dataset_converted = dict()
+    for i in range(cluster_num):
+        dataset_converted[i] = []
 
     for row in dataset.values:
         cluster = int(row[-1])
-        if cluster == -1:
-            continue
         row = row[:-1]
-        if cluster not in dataset_converted:
-            dataset_converted[cluster] = []
         dataset_converted[cluster].append(np.array(row))
 
     tmp_sum = 0
@@ -157,7 +156,8 @@ class InternalValidator:
         """
 
     def __init__(self, datasets, cluster_nums, k_vals=[1, 5, 10, 20]):
-        self.datasets = datasets
+        # WHY STRIPPED?
+        self.datasets = list(map(lambda df: df.drop('CENTROID', axis=0), datasets))
         self.cluster_nums = cluster_nums
         self.k_vals = k_vals
 

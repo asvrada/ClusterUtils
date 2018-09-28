@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
+import time
 
 """
 Ref.:https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/metrics/cluster/supervised.py
@@ -19,17 +20,31 @@ def entropy(labels):
     pi = np.bincount(label_idx).astype(np.float64)
     pi = pi[pi > 0]
     pi_sum = pi.sum()
-    # log(a / b) = log(a) - log(b)
     return -np.sum((pi / pi_sum) * (np.log(pi) - math.log(pi_sum)))
 
 
 def get_contingency_matrix(true_labels, pred_labels):
+    """
+    :param true_labels: array of integer labels
+    :param pred_labels: array of integer labels
+    :return:
+    """
     return np.array([list(zip(true_labels, pred_labels)).count((pred, true)) for pred in set(pred_labels) for true in
                      set(true_labels)]).reshape((len(set(pred_labels)), len(set(true_labels))))
 
 
+def convert_labels(labels):
+    # convert labels from pandas data frame index into np array
+    list_labels = list(set(labels))
+    return np.array([list_labels.index(each) for each in labels])
+
+
 def find_norm_MI(true_labels, pred_labels):
     # Return a number corresponding to the NMI of the two sets of labels.
+
+    # convert labels into np array
+    # into format like [0000111122222]....
+    true_labels = convert_labels(true_labels)
 
     # First, implement MI
     contingency = get_contingency_matrix(true_labels, pred_labels)
@@ -92,39 +107,14 @@ def find_norm_rand(true_labels, pred_labels):
     def comb2(n):
         return comb(n, 2)
 
-    # def helper(n):
-    #     return n * (n - 1) / 2
-    #
-    # def ni(mat, i):
-    #     return helper(mat.sum(axis=1)[i])
-    #
-    # def nj(mat, j):
-    #     return helper(mat.sum(axis=1)[j])
-    #
-    # def nij(mat, i, j):
-    #     return helper(mat[i][j])
+    # convert labels into np array
+    # into format like [0000111122222]....
+    true_labels = convert_labels(true_labels)
 
     # Return a number corresponding to the NRI of the two sets of labels.
     contingency = get_contingency_matrix(true_labels, pred_labels)
     x, y = contingency.shape
 
-    # # naive
-    # tmp_a = 0
-    # tmp_b = 0
-    # tmp_c = 0
-    # for i in range(x):
-    #     tmp_a += ni(contingency, i)
-    #
-    # for j in range(y):
-    #     tmp_b += nj(contingency, j)
-    #
-    # for i in range(x):
-    #     for j in range(y):
-    #         tmp_c += nij(contingency, i, j)
-    #
-    # sum_ri = (helper(x * y - tmp_a - tmp_b + 2 * tmp_c)) / helper(x * y)
-
-    # new
     n_samples = len(true_labels)
 
     sum_comb_c = sum(comb2(n_c) for n_c in np.ravel(contingency.sum(axis=1)))
@@ -146,6 +136,9 @@ def find_accuracy(true_labels, pred_labels):
     # Implement.
     # Return a number corresponding to the accuracy of the two sets of labels.
 
+    # convert labels into np array
+    # into format like [0000111122222]....
+    true_labels = convert_labels(true_labels)
     matrix = get_contingency_matrix(true_labels, pred_labels)
 
     # for each col, find the largest num and sum it
@@ -195,7 +188,7 @@ class ExternalValidator:
     def normalized_rand_index(self):
         start_time = time.time()
         nri = find_norm_rand(self.true_labels, self.pred_labels)
-        print("NMI finished in  %s seconds" % (time.time() - start_time))
+        print("NRI finished in  %s seconds" % (time.time() - start_time))
         return nri
 
     def accuracy(self):
@@ -203,22 +196,3 @@ class ExternalValidator:
         a = find_accuracy(self.true_labels, self.pred_labels)
         print("Accuracy finished in  %s seconds" % (time.time() - start_time))
         return a
-
-
-def test_with_scikit(true_labels, pred_labels):
-    import sklearn.metrics.cluster as sk
-    print(sk.adjusted_rand_score(true_labels, pred_labels))
-    pass
-
-
-def test_with_custom(true_labels, pred_labels):
-    print(find_norm_rand(true_labels, pred_labels))
-    pass
-
-
-if __name__ == '__main__':
-    true_labels = [1, 1, 0, 0]
-    pred_labels = [0, 0, 1, 1]
-    # print(find_accuracy(true_labels, pred_labels))
-    test_with_scikit(true_labels, pred_labels)
-    test_with_custom(true_labels, pred_labels)

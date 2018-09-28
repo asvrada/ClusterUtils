@@ -10,9 +10,7 @@ THRESHOLD = 1e-9
 
 
 def plot_centroids(centroids):
-    return
     plt.scatter(*zip(*centroids))
-    plt.axis([-6, 6, -6, 6])
     plt.show()
 
 
@@ -65,7 +63,7 @@ def init_global(data, n_clusters):
     centroids = []
     for num in range(1, n_clusters + 1):
         if num == 1:
-            centroids.append(data[random.randint(0, len(data) - 1)])
+            centroids.append(np.average(data, axis=0))
             continue
         # for n_clusters > 1
         # add a random point to previous centroids
@@ -85,18 +83,17 @@ def objective_function(X, assignment, centroids):
     """
 
     # Determine distance by the square of euclidean distance
-    def dist(x):
+    def square_dist(x):
         """
         :param x: np.array, for example: [3.0, 4.0]
         :return: for example: 25.0
         """
         return sum(each ** 2 for each in x)
 
-    # first lets calculate the obj func for each cluster
     datasets = [X[np.where(assignment == cluster)[0]] for cluster in range(len(centroids))]
     sse_sum = 0
     for i in range(len(datasets)):
-        sse_sum += sum(dist(row - centroids[i]) for row in datasets[i])
+        sse_sum += sum(square_dist(row - centroids[i]) for row in datasets[i])
 
     return sse_sum
 
@@ -150,6 +147,13 @@ def kmeans_lloyds(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbos
 
 
 def kmeans_hartigans(X, n_clusters=3, init='random', n_init=1, max_iter=300, verbose=False):
+    def d(x, i_cluster, assignment, centroids):
+        scalar = 0.5
+        n = np.count_nonzero(assignment == i_cluster)
+        fraction = n / (n + 1)
+        dist = np.linalg.norm(x - centroids[i_cluster]) ** 2
+        return scalar * fraction * dist
+
     init_methods = {
         "random": init_random,
         "k-mean++": init_kmeanpp,
@@ -161,13 +165,47 @@ def kmeans_hartigans(X, n_clusters=3, init='random', n_init=1, max_iter=300, ver
     if verbose:
         print(">>> Starting Hartigan's k-means with {} init, {} clusters".format(init, n_clusters))
 
-    # todo: hartigan's k-means
-    for _run in range(n_init):
+    for _iter in range(max_iter):
         centroids = init_methods[init](X, n_clusters)
         inertia = -1
-        for _iter in range(max_iter):
-            # todo
-            pass
+
+        assignment = np.array([np.argmin([np.linalg.norm(centroid - row) for centroid in centroids]) for row in X])
+
+        # main loop
+        done = False
+        while not done:
+            done = True
+            for i_data_point in range(len(X)):
+                # for each data point, remove it from current cluster, update the centroid of that cluster
+                prev_cluster = assignment[i_data_point]
+                assignment[i_data_point] = -1
+                centroids[prev_cluster] = np.average(X[np.where(assignment == prev_cluster)], axis=0)
+
+                # and find a new cluster to assign to by function D(x)
+                list_result = [d(X[i_data_point], cluster, assignment, centroids) for cluster in range(len(centroids))]
+                new_cluster = np.argmin(list_result)
+                if new_cluster != prev_cluster:
+                    done = False
+
+                # if it gets assigned to a new cluster, merge it into it and update the centroid of that new cluster, and set done to False
+                assignment[i_data_point] = new_cluster
+                centroids[new_cluster] = np.average(X[np.where(assignment == new_cluster)], axis=0)
+
+        sse = objective_function(X, assignment, centroids)
+        if best_inertia is None or abs(sse - inertia) <= THRESHOLD:
+            if best_inertia is not None and sse >= best_inertia:
+                if verbose:
+                    print(">>> Discard iteration {}, with sse {:.2f}".format(_iter, sse))
+                break
+            # that's it
+            best_centroids = centroids
+            best_assignment = assignment
+            best_inertia = sse
+
+            if verbose:
+                print(">>> Accept K-mean after iteration {} at run {}, with sse: {:.2f}".format(_iter, _run, sse))
+            break
+
     return best_centroids, best_assignment, best_inertia
 
 
@@ -245,7 +283,7 @@ class KMeans(SuperCluster):
             self.X = X
         start_time = time.time()
         self.labels, self.centroids, self.inertia = \
-            k_means(X, n_clusters=self.n_clusters, init=self.init,
+            k_means(X, n_clusters=self.n_clusters, init=self.init, algorithm=self.algorithm,
                     n_init=self.n_init, max_iter=self.max_iter, verbose=self.verbose)
         print(self.init + " k-means finished in  %s seconds" % (time.time() - start_time))
         return self
