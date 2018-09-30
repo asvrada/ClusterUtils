@@ -8,19 +8,48 @@ Ref.:https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/metrics/
 """
 
 
-def entropy(labels):
-    """
-    Calculates the entropy for a labeling.
-    Ref.: https://en.wikipedia.org/wiki/Entropy#Information_theory
-    """
-    if len(labels) == 0:
-        return 1.0
-    label_idx = np.unique(labels, return_inverse=True)[1]
-    # number of occurrence
-    pi = np.bincount(label_idx).astype(np.float64)
-    pi = pi[pi > 0]
-    pi_sum = pi.sum()
-    return -np.sum((pi / pi_sum) * (np.log(pi) - math.log(pi_sum)))
+def entropy_1d(array):
+    array = convert_labels(array)
+    size_x = len(array)
+    array_sum = sum(array)
+
+    def pi(x):
+        return array[x] / array_sum
+
+    sum_outer = 0
+    for x in range(size_x):
+        if array[x] == 0:
+            continue
+        sum_outer += pi(x) * math.log(pi(x), 2)
+
+    return -sum_outer
+
+
+def entropy_2d(true_labels, pred_labels):
+    true_labels = convert_labels(true_labels)
+    contingency = get_contingency_matrix(true_labels, pred_labels)
+    size_x, size_y = contingency.shape
+    contingency_sum = contingency.sum()
+
+    def pi(x):
+        return contingency.sum(axis=1)[x] / contingency_sum
+
+    def pij(x, y):
+        return contingency[x][y] / contingency_sum
+
+    sum_outer = 0
+    for x in range(size_x):
+        # inner loop
+
+        sum_inner = 0
+        for y in range(size_y):
+            if contingency[x][y] == 0:
+                continue
+            sum_inner += pij(x, y) / pi(x) * math.log((pij(x, y) / pi(x)), 2)
+
+        sum_outer += pi(x) * sum_inner
+
+    return -sum_outer
 
 
 def get_contingency_matrix(true_labels, pred_labels):
@@ -61,20 +90,23 @@ def find_norm_MI(true_labels, pred_labels):
 
     mi_sum = 0
     for x in range(contingency.shape[0]):
+        _pi = pi(x)
+        if _pi == 0:
+            continue
+
         for y in range(contingency.shape[1]):
-            _pi = pi(x)
             _pj = pj(y)
             _pij = pij(x, y)
 
-            if _pi == 0 or _pj == 0 or _pij == 0:
+            if _pj == 0 or _pij == 0:
                 continue
 
-            mi_sum += _pij * math.log(_pij / (_pi * _pj))
+            mi_sum += _pij * math.log(_pij / (_pi * _pj), 2)
 
     # Second, implement NMI
     # Calculate the expected value for the mutual information
     # Calculate entropy for each labeling
-    h_true, h_pred = entropy(true_labels), entropy(pred_labels)
+    h_true, h_pred = entropy_1d(true_labels), entropy_1d(pred_labels)
     nmi = mi_sum / max(np.sqrt(h_true * h_pred), 1e-10)
 
     return nmi

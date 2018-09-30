@@ -3,11 +3,13 @@ from ClusterUtils import KMeans
 from ClusterUtils import InternalValidator
 from ClusterUtils import ExternalValidator
 
-# db = DBScan(eps=0.3, min_points=10, csv_path='./Datasets/rockets.csv')
-# db.fit_from_csv()
-# db.show_plot()
+db = DBScan(eps=0.3, min_points=10, csv_path='./Datasets/rockets.csv')
+db.fit_from_csv()
+db.show_plot()
 # db.save_plot()
 # db.save_csv()
+
+exit(0)
 
 
 # km = KMeans(init='random', n_clusters=3, csv_path='./Datasets/three_globs.csv')

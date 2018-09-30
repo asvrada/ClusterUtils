@@ -40,7 +40,7 @@ def problem3(dataset_path, n_cluster):
     4. Given the true cluster number, run your Lloyd’s K-means algorithm on the image segmentation.csv dataset, and evaluate the results in terms of the external measurements completed in Part I.
     """
 
-    km = KMeans(algorithm="hartigans", csv_path=dataset_path, n_clusters=n_cluster, n_init=3, verbose=False)
+    km = KMeans(init="k-mean++", algorithm="hartigans", csv_path=dataset_path, n_clusters=n_cluster, n_init=5, verbose=True)
     data = km.fit_predict_from_csv()
     km.show_plot()
 

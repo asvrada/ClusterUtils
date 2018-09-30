@@ -4,16 +4,74 @@ import time
 from ClusterUtils.SuperCluster import SuperCluster
 from ClusterUtils.ClusterPlotter import _plot_generic_
 
+
+def dist_func(a, b):
+    return np.linalg.norm(a - b)
+
+
+def find_neighbors(X, i_core, eps):
+    return set(filter(lambda i_point: False if i_core == i_point else dist_func(X[i_core], X[i_point]) <= eps, range(len(X))))
+
+
 def dbscan(X, eps=1, min_points=10, verbose=False):
+    """
+    Implementation of dbscan
+    :param X: np.darray of samples
+    :param eps: minimal distance
+    :param min_points:  minimal number of points to form a cluster
+    :param verbose: toggle log or not
+    :return: a array or list-type object corresponding to the predicted cluster
+    """
+    # number of cluster
+    C = 0
 
-    # Implement.
+    # Labels for each data point
+    # if its int, it represents the cluster it belongs to
+    # if its string, if its "noise", its noise
+    NOISE = "NOISE"
+    labels = [None] * len(X)
 
-    # Input: np.darray of samples
+    # for each and every point in the dataset
+    for i_point in range(len(X)):
+        # this point has been visited, skip
+        if labels[i_point] is not None:
+            continue
 
-    # Return a array or list-type object corresponding to the predicted cluster
-    # numbers, e.g., [0, 0, 0, 1, 1, 1, 2, 2, 2]
+        neighbors = find_neighbors(X, i_point, eps)
+        # because the neighbors doesn't contain the original point, we add 1 to compensate that
+        # no enough neighbor, this is a NOISE point
+        if len(neighbors) + 1 < min_points:
+            labels[i_point] = NOISE
+            continue
 
-    return None
+        # assign this point to cluster C
+        C += 1
+        labels[i_point] = C
+
+        # make it a queue so its safe to add items when looping
+        queue_neighbor = list(neighbors)
+        while len(queue_neighbor) != 0:
+            cursor = queue_neighbor.pop(0)
+
+            # add it to this cluster
+            if labels[cursor] == NOISE:
+                labels[cursor] = C
+
+            # this has been visited, skip
+            if labels[cursor] is not None:
+                continue
+
+            # add this point to this cluster
+            labels[cursor] = C
+            # find the neighbors of current point
+            tmp_neighbors = find_neighbors(X, cursor, eps)
+
+            if len(tmp_neighbors) >= min_points:
+                # add the result into current list
+                queue_neighbor += list(filter(lambda x: x not in queue_neighbor, tmp_neighbors))
+
+    # assign data point with label NOISE into cluster 0
+    return list(map(lambda x: 0 if x == NOISE else x, labels))
 
 
 # The code below is completed for you.
@@ -43,7 +101,7 @@ class DBScan(SuperCluster):
     """
 
     def __init__(self, eps=1, min_points=10, csv_path=None, keep_dataframe=True,
-                                                    keep_X=True,verbose=False):
+                 keep_X=True, verbose=False):
         self.eps = eps
         self.min_points = min_points
         self.verbose = verbose
@@ -56,7 +114,7 @@ class DBScan(SuperCluster):
         if self.keep_X:
             self.X = X
         start_time = time.time()
-        self.labels = dbscan(X, eps=self.eps, min_points = self.min_points,verbose = self.verbose)
+        self.labels = dbscan(X, eps=self.eps, min_points=self.min_points, verbose=self.verbose)
         print("DBSCAN finished in  %s seconds" % (time.time() - start_time))
         return self
 
