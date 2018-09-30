@@ -63,6 +63,9 @@ def get_contingency_matrix(true_labels, pred_labels):
 
 
 def convert_labels(labels):
+    # we only convert strings
+    if type(labels[0]) is not str:
+        return labels
     # convert labels from pandas data frame index into np array
     list_labels = list(set(labels))
     return np.array([list_labels.index(each) for each in labels])

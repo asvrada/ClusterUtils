@@ -71,15 +71,8 @@ def silhouette(dataset, cluster_num):
 
         if abs(ret_a - ret_b) <= 1e-10:
             return 0
-        if ret_a < ret_b:
-            ret = 1 - ret_a / ret_b
-            if math.isnan(ret):
-                pass
-            return ret
-        ret = ret_b / ret_a - 1
-        if math.isnan(ret):
-            pass
-        return ret
+
+        return (ret_b - ret_a) / max(ret_a, ret_b)
 
     # convert dataset into better format
     # [[x,y,cluster]] -> [[(x,y),(x,y)], [(x,y)]]
