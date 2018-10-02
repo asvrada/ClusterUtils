@@ -16,6 +16,7 @@ def find_neighbors(X, i_core, eps):
 def dbscan(X, eps=1, min_points=10, verbose=False):
     """
     Implementation of dbscan
+    Ref.: Wiki
     :param X: np.darray of samples
     :param eps: minimal distance
     :param min_points:  minimal number of points to form a cluster

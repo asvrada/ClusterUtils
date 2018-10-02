@@ -9,6 +9,12 @@ Ref.:https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/metrics/
 
 
 def entropy_1d(array):
+    """
+
+    :param array:
+
+    :return:
+    """
     array = convert_labels(array)
     size_x = len(array)
     array_sum = sum(array)
@@ -26,6 +32,16 @@ def entropy_1d(array):
 
 
 def entropy_2d(true_labels, pred_labels):
+    """
+    Calculate the entropy of the contingency matrix of clustering results
+    Ref.: Wiki
+    :param true_labels: the ground truth clustering result
+    :type true_labels: list[int | str]
+    :param pred_labels: the predicted clustering result by our algorithms
+    :type pred_labels: list[int]
+    :return: The entropy
+    :rtype: int
+    """
     true_labels = convert_labels(true_labels)
     contingency = get_contingency_matrix(true_labels, pred_labels)
     size_x, size_y = contingency.shape
@@ -63,6 +79,13 @@ def get_contingency_matrix(true_labels, pred_labels):
 
 
 def convert_labels(labels):
+    """
+    Convert labels in string to integer
+    :param labels: labels in string or int
+    :type labels: list[str | int]
+    :return: list of labels, in int
+    :rtype: list[int]
+    """
     # we only convert strings
     if type(labels[0]) is not str:
         return labels
@@ -72,7 +95,11 @@ def convert_labels(labels):
 
 
 def find_norm_MI(true_labels, pred_labels):
-    # Return a number corresponding to the NMI of the two sets of labels.
+    """
+    Return a number corresponding to the NMI of the two sets of labels.
+    :return: NMI
+    :rtype: float
+    """
 
     # convert labels into np array
     # into format like [0000111122222]....
@@ -168,7 +195,6 @@ def find_norm_rand(true_labels, pred_labels):
 
 
 def find_accuracy(true_labels, pred_labels):
-    # Implement.
     # Return a number corresponding to the accuracy of the two sets of labels.
 
     # convert labels into np array
@@ -200,7 +226,8 @@ class ExternalValidator:
     """
 
     def __init__(self, df=None, true_labels=None, pred_labels=None):
-        df = df.drop('CENTROID', axis=0)  # IMPORTANT -- Drop centroid rows before processing
+        if 'CENTROID' in df.index:
+            df = df.drop('CENTROID', axis=0)  # IMPORTANT -- Drop centroid rows before processing
         self.DF = df
         self.true_labels = true_labels
         self.pred_labels = pred_labels

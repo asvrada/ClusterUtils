@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import collections
 import math
 import time
 from ClusterUtils.ClusterPlotter import _plot_cvnn_
@@ -115,7 +116,135 @@ def tabulate_silhouette(datasets, cluster_nums):
     return pd.DataFrame({"CLUSTERS": cluster_nums, "SILHOUETTE_IDX": y})
 
 
+def compute_kNN(dataset, k):
+    """
+    Compute the k-nearest neighbors for each data point in the given dataset
+    Not include points within the same cluster
+
+    :param dataset:
+    :type dataset: pandas.DataFrame
+    :param k: number of nearest neighbors to find
+    :type k: int
+    :return: a 2D array, for each data point, compute a list of points that are in other clusters that is it's kNN
+    :rtype: numpy.ndarray
+    """
+    # first lets compute the proximity matrix
+    dataset_without_cluster = dataset[dataset.columns.drop("CLUSTER")].values
+    proximity_matrix = np.array([[np.linalg.norm(row - other) for other in dataset_without_cluster] for row in dataset_without_cluster])
+
+    # then get the kNN for each data point, remove it self
+    kNN = [np.argsort(arr)[1:k + 1] for arr in proximity_matrix]
+
+    # then for each point we remove its neighbors that are in the same cluster
+    assignment = list(map(int, dataset["CLUSTER"].values))
+
+    kNN = np.array(list(map(lambda i_data: list(filter(lambda idx: assignment[idx] != assignment[i_data], kNN[i_data])), range(len(kNN)))))
+
+    return kNN
+
+
+def cvnn_seperation(dataset, cluster_num, k):
+    """
+    Calculate the degree of seperation of current clustering
+    1. for each object in each cluster, find out whether at least one of its kNNs is in other clusters
+    2. for objects with positive answers, assign a weight to each of them
+    3. alculate the average weight of objects in the same cluster
+    4. take the maximum average weight among all clusters as the intercluster separation
+
+    :param dataset:
+    :type dataset: pandas.DataFrame
+    :param cluster_num: number of cluster
+    :type cluster_num: int
+    :param k: the k value for kNN
+    :type k: int
+    :return: the seperation index of this clustering
+    :rtype: float
+    """
+    kNN = compute_kNN(dataset, k)
+    # do it for a single cluster
+    assignment = np.array(list(map(int, dataset["CLUSTER"].values)))
+    counter = collections.Counter(assignment)
+
+    ret = max(1 / counter[i_cluster] * sum(map(lambda x: len(x) / k, kNN[np.where(assignment == i_cluster)[0]])) for i_cluster in range(cluster_num))
+    return ret
+
+
+def cvnn_compactness(dataset, cluster_num):
+    """
+    Compute the compactness of the given clustering result
+
+    :param dataset:
+    :type dataset:
+    :param cluster_num:
+    :type cluster_num:
+    :return: the lower, the better
+    :rtype: float
+    """
+    dataset_without_cluster = dataset[dataset.columns.drop("CLUSTER")].values
+    assignment = np.array(list(map(int, dataset["CLUSTER"].values)))
+    counter = collections.Counter(assignment)
+    proximity_matrix = np.array([[np.linalg.norm(row - other) for other in dataset_without_cluster] for row in dataset_without_cluster])
+
+    sum_ans = 0
+    for i_cluster in range(cluster_num):
+        scalar = 2 / counter[i_cluster] * (counter[i_cluster] - 1)
+        idx = np.where(assignment == i_cluster)[0]
+
+        sum_matrix = proximity_matrix[idx][:, idx].sum() / 2
+        sum_ans += scalar * sum_matrix
+
+    return sum_ans
+
+
+def cvnn(datasets, cluster_nums, k):
+    """
+    Clustering Validation Index based on Nearest Neighbors
+    Compute the CVNN for a given dataset among a range of cluster nums
+
+    :param datasets: the dataset, each row is the data + cluster
+    :type datasets: list[pandas.DataFrame]
+    :param cluster_nums: number of cluster in this dataset
+    :type cluster_nums: list[int]
+    :param k: number of nearest neighbors
+    :type k: int
+    :return: The CVNN index, the lower the better
+    :rtype: float
+    """
+    print("CVNN, ", cluster_nums, k)
+
+    list_sep = []
+    list_com = []
+
+    for i_cn in range(len(cluster_nums)):
+        print("Loop, cluster ", cluster_nums[i_cn])
+        dataset = datasets[i_cn]
+        cluster_num = cluster_nums[i_cn]
+        sep = cvnn_seperation(dataset, cluster_num, k)
+        com = cvnn_compactness(dataset, cluster_num)
+
+        print("Sep: {}, Com: {}".format(sep, com))
+
+        list_sep.append(sep)
+        list_com.append(com)
+
+    max_sep = max(list_sep)
+    max_com = max(list_com)
+
+    return [((sep / max_sep) if max_sep != 0 else 0) + com / max_com for sep, com in zip(list_sep, list_com)]
+
+
 def tabulate_cvnn(datasets, cluster_nums, k_vals):
+    """
+    CVNN on multiple datasets
+    :param datasets: list of dataset
+    :type datasets: list[pandas.DataFrame]
+    :param cluster_nums: list of numbers of cluster for each dataset
+    :type cluster_nums: list[int]
+    :param k_vals: list of k for CVNN
+    :type k_vals: list[int]
+    :return: A DataFrame corresponding to the results
+    :rtype: pandas.DataFrame
+    """
     # Implement.
 
     # Inputs:
@@ -127,7 +256,12 @@ def tabulate_cvnn(datasets, cluster_nums, k_vals):
 
     # Return a pandas DataFrame corresponding to the results.
 
-    return None
+    y = [cvnn(datasets, cluster_nums, k) for k in k_vals]
+
+    k = np.ravel([[each] * len(cluster_nums) for each in k_vals])
+    cluster_nums = cluster_nums * len(k_vals)
+    y = np.ravel(y)
+    return pd.DataFrame({"CLUSTERS": cluster_nums, "CVNN": y, "K": k})
 
 
 # The code below is completed for you.
@@ -150,7 +284,10 @@ class InternalValidator:
 
     def __init__(self, datasets, cluster_nums, k_vals=[1, 5, 10, 20]):
         # WHY STRIPPED?
-        self.datasets = list(map(lambda df: df.drop('CENTROID', axis=0), datasets))
+        if 'CENTROID' in datasets[0].index:
+            self.datasets = list(map(lambda df: df.drop('CENTROID', axis=0), datasets))
+        else:
+            self.datasets = datasets
         self.cluster_nums = cluster_nums
         self.k_vals = k_vals
 
@@ -174,7 +311,7 @@ class InternalValidator:
         _plot_silhouette_(self.silhouette_table)
 
     def save_silhouette_plot(self, name='silhouette_plot'):
-        _plot_silhouette_(self.cvnn_table, save=True, n=name)
+        _plot_silhouette_(self.silhouette_table, save=True, n=name)
 
     def save_csv(self, cvnn=False, silhouette=False, name='internal_validator'):
         if cvnn is False and silhouette is False:

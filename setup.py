@@ -2,10 +2,10 @@ import setuptools
 setuptools.setup(
     name="ClusterUtils",
     version="0.1.0",
-    url="",
-    author="First Last",
-    author_email="email@brandeis.edu",
-    description="A clustering utility package",
+    url="https://github.com/asvrada/ClusterUtils",
+    author="Zijie Wu",
+    author_email="zijiewu@brandeis.edu",
+    description="Data Mining HW1",
     packages=setuptools.find_packages(),
     install_requires=[],
     classifiers=[

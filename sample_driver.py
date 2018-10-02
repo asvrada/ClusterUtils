@@ -3,13 +3,11 @@ from ClusterUtils import KMeans
 from ClusterUtils import InternalValidator
 from ClusterUtils import ExternalValidator
 
-db = DBScan(eps=0.3, min_points=10, csv_path='./Datasets/rockets.csv')
-db.fit_from_csv()
-db.show_plot()
+# db = DBScan(eps=0.3, min_points=10, csv_path='./Datasets/rockets.csv')
+# db.fit_from_csv()
+# db.show_plot()
 # db.save_plot()
 # db.save_csv()
-
-exit(0)
 
 
 # km = KMeans(init='random', n_clusters=3, csv_path='./Datasets/three_globs.csv')
@@ -18,10 +16,12 @@ exit(0)
 # km.save_plot()
 # km.save_csv()
 
-km = KMeans(init='random', csv_path='./Datasets/well_separated.csv', n_init=5, verbose=True)
+mini_dataset = "./Mini_Datasets/three_globs_mini.csv"
+well_separated = "./Datasets/well_separated.csv"
+km = KMeans(init='k-mean++', csv_path=mini_dataset, n_init=3, verbose=True)
 dfs = []
 cs = []
-for i in range(2, 8):
+for i in range(2, 5):
     # IMPORTANT -- Update the number of clusters to run.
     km.n_clusters = i
     dfs.append(km.fit_predict_from_csv())
@@ -34,7 +34,7 @@ iv = InternalValidator(dfs, cluster_nums=cs)
 
 iv.make_silhouette_table()
 iv.show_silhouette_plot()
-# iv.save_silhouette_plot()
+iv.save_silhouette_plot()
 
 exit(0)
 
