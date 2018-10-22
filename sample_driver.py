@@ -18,10 +18,10 @@ from ClusterUtils import ExternalValidator
 
 mini_dataset = "./Mini_Datasets/three_globs_mini.csv"
 well_separated = "./Datasets/well_separated.csv"
-km = KMeans(init='k-mean++', csv_path=mini_dataset, n_init=3, verbose=True)
+km = KMeans(init='k-mean++', csv_path=well_separated, n_init=3, verbose=True)
 dfs = []
 cs = []
-for i in range(2, 5):
+for i in range(2, 9):
     # IMPORTANT -- Update the number of clusters to run.
     km.n_clusters = i
     dfs.append(km.fit_predict_from_csv())
@@ -34,7 +34,7 @@ iv = InternalValidator(dfs, cluster_nums=cs)
 
 iv.make_silhouette_table()
 iv.show_silhouette_plot()
-iv.save_silhouette_plot()
+# iv.save_silhouette_plot()
 
 exit(0)
 

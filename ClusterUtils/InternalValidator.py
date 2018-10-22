@@ -87,13 +87,11 @@ def silhouette(dataset, cluster_num):
         dataset_converted[cluster].append(np.array(row))
 
     tmp_sum = 0
-    tmp_n = 0
     for i_cluster in range(cluster_num):
-        tmp_sum += sum(s(i_cluster, i) for i in dataset_converted[i_cluster])
-        tmp_n += len(dataset_converted[i_cluster])
+        # for each cluster, sum the s index of all data points in this cluster, then divided by length of this cluster
+        tmp_sum += sum(s(i_cluster, i) for i in dataset_converted[i_cluster]) / len(dataset_converted[i_cluster])
 
-    # the average i over all data of the entire dataset
-    return tmp_sum / tmp_n
+    return tmp_sum / cluster_num
 
 
 def tabulate_silhouette(datasets, cluster_nums):
@@ -165,8 +163,16 @@ def cvnn_seperation(dataset, cluster_num, k):
     assignment = np.array(list(map(int, dataset["CLUSTER"].values)))
     counter = collections.Counter(assignment)
 
-    ret = max(1 / counter[i_cluster] * sum(map(lambda x: len(x) / k, kNN[np.where(assignment == i_cluster)[0]])) for i_cluster in range(cluster_num))
-    return ret
+    weight_clusters = []
+    for i_cluster in range(cluster_num):
+        idx = np.where(assignment == i_cluster)[0]
+        points_with_neighbors = kNN[idx]
+        tmp_sum = sum(len(x) / k for x in points_with_neighbors)
+        weight_clusters.append(1 / counter[i_cluster] * tmp_sum)
+
+    return max(weight_clusters)
+    # ret = max(1 / counter[i_cluster] * sum(map(lambda x: len(x) / k, kNN[np.where(assignment == i_cluster)[0]])) for i_cluster in range(cluster_num))
+    # return ret
 
 
 def cvnn_compactness(dataset, cluster_num):
